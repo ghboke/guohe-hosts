@@ -1,5 +1,7 @@
 # 果核Hosts (Guohe Hosts)
 
+[English](README-en.md) | 中文
+
 一款基于 Tauri 2 + Vue 3 + Rust 构建的现代化 Windows hosts 文件管理工具。
 
 轻松管理多个 hosts 分组，一键切换，告别手动编辑系统 hosts 文件。
