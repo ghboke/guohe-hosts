@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guohe Hosts - Open Source Hosts Editor</title>
+  <meta name="description" content="A modern, open-source cross-platform hosts file editor. Built with Tauri 2 + Vue 3.">
+  <meta name="keywords" content="hosts editor, SwitchHosts, hosts file, DNS, Windows, macOS, Linux, Tauri, open source, cross-platform">
+  <link rel="icon" type="image/png" href="ghhost.png">
+  <style>
+    :root {
+      --primary: #165dff;
+      --primary-light: #4080ff;
+      --primary-bg: rgba(22,93,255,0.06);
+      --primary-border: rgba(22,93,255,0.15);
+      --bg: #ffffff;
+      --bg-secondary: #f7f8fa;
+      --bg-tertiary: #f2f3f5;
+      --bg-card: #ffffff;
+      --text: #1d2129;
+      --text-secondary: #4e5969;
+      --text-tertiary: #86909c;
+      --border: #e5e6eb;
+      --border-light: #f0f0f0;
+      --green: #00b42a;
+      --orange: #ff7d00;
+      --purple: #722ed1;
+      --red: #f53f3f;
+      --cyan: #14c9c9;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.04);
+      --shadow: 0 4px 16px rgba(0,0,0,0.06);
+      --shadow-lg: 0 8px 30px rgba(0,0,0,0.08);
+      --shadow-xl: 0 16px 48px rgba(0,0,0,0.1);
+      --radius: 12px;
+      --radius-lg: 16px;
+      --radius-sm: 8px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.6;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--primary); text-decoration: none; transition: color 0.2s; }
+    a:hover { color: var(--primary-light); }
+
+    .container { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+    /* Animations */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .fade-up {
+      opacity: 0; transform: translateY(24px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    .fade-up.visible {
+      opacity: 1; transform: translateY(0);
+    }
+
+    /* ===== NAV ===== */
+    .nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(255,255,255,0.8);
+      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    .nav.scrolled {
+      border-bottom-color: var(--border);
+      box-shadow: 0 1px 8px rgba(0,0,0,0.04);
+    }
+    .nav-inner {
+      max-width: 1120px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 24px; height: 56px;
+    }
+    .nav-brand {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 17px; font-weight: 700; color: var(--text);
+    }
+    .nav-logo {
+      width: 30px; height: 30px; border-radius: 8px;
+      background: var(--primary); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 800;
+    }
+    .nav-right { display: flex; align-items: center; gap: 20px; }
+    .nav-right a {
+      color: var(--text-secondary); font-size: 14px; font-weight: 500;
+      transition: color 0.2s;
+    }
+    .nav-right a:hover { color: var(--primary); }
+    .nav-github {
+      display: flex; align-items: center; gap: 6px;
+    }
+    .lang-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 5px 14px; border-radius: 6px;
+      background: transparent; border: 1px solid var(--border);
+      font-size: 13px; font-weight: 500; color: var(--text-secondary);
+      cursor: pointer; transition: all 0.2s;
+      font-family: inherit;
+    }
+    .lang-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+    /* ===== HERO ===== */
+    .hero {
+      padding: 130px 24px 64px;
+      text-align: center;
+      position: relative;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background: var(--bg-secondary);
+      clip-path: ellipse(75% 100% at 50% 0%);
+      z-index: -1;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 16px; border-radius: 20px;
+      background: var(--primary-bg); border: 1px solid var(--primary-border);
+      color: var(--primary); font-size: 13px; font-weight: 600;
+      margin-bottom: 28px;
+    }
+    .hero h1 {
+      font-size: clamp(34px, 5.5vw, 52px);
+      font-weight: 800; line-height: 1.2;
+      letter-spacing: -0.03em; margin-bottom: 20px;
+      color: var(--text);
+    }
+    .hero h1 .highlight { color: var(--primary); }
+    .hero-desc {
+      font-size: 17px; color: var(--text-secondary);
+      max-width: 520px; margin: 0 auto 36px; line-height: 1.75;
+    }
+    .hero-actions {
+      display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;
+      margin-bottom: 28px;
+    }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 11px 24px; border-radius: var(--radius-sm);
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      border: none; transition: all 0.2s; font-family: inherit;
+    }
+    .btn-primary {
+      background: var(--primary); color: #fff;
+      box-shadow: 0 2px 8px rgba(22,93,255,0.25);
+    }
+    .btn-primary:hover {
+      background: var(--primary-light); color: #fff;
+      box-shadow: 0 4px 16px rgba(22,93,255,0.35);
+      transform: translateY(-1px);
+    }
+    .btn-outline {
+      background: var(--bg); color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-outline:hover {
+      border-color: var(--primary); color: var(--primary);
+      transform: translateY(-1px);
+    }
+
+    /* Platforms */
+    .platforms {
+      display: flex; align-items: center; justify-content: center; gap: 24px;
+      color: var(--text-tertiary); font-size: 13px;
+    }
+    .platform-item {
+      display: flex; align-items: center; gap: 6px;
+    }
+    .platform-item svg { opacity: 0.5; }
+
+    /* ===== SCREENSHOT ===== */
+    .screenshot-section { padding: 48px 24px 80px; }
+    .screenshot-wrapper {
+      max-width: 880px; margin: 0 auto;
+      border-radius: var(--radius-lg); overflow: hidden;
+      box-shadow: var(--shadow-xl);
+      border: 1px solid var(--border);
+      background: var(--bg-tertiary);
+      position: relative;
+    }
+    .screenshot-wrapper img {
+      width: 100%; height: auto; display: block;
+    }
+    .screenshot-toggle {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 16px; border-radius: 6px;
+      background: transparent; border: 1px solid var(--border);
+      font-size: 13px; font-weight: 500; color: var(--text-secondary);
+      cursor: pointer; transition: all 0.2s; font-family: inherit;
+    }
+    .screenshot-toggle:hover { border-color: var(--primary); color: var(--primary); }
+    .screenshot-toggle.active {
+      background: var(--primary-bg); border-color: var(--primary);
+      color: var(--primary); font-weight: 600;
+    }
+
+    /* ===== FEATURES ===== */
+    .features { padding: 80px 24px; }
+    .section-header { text-align: center; margin-bottom: 56px; }
+    .section-label {
+      display: inline-block; font-size: 13px; font-weight: 600;
+      color: var(--primary); text-transform: uppercase; letter-spacing: 0.06em;
+      margin-bottom: 12px;
+    }
+    .section-header h2 {
+      font-size: 30px; font-weight: 700; margin-bottom: 12px;
+      letter-spacing: -0.02em;
+    }
+    .section-header p {
+      font-size: 16px; color: var(--text-secondary);
+      max-width: 460px; margin: 0 auto;
+    }
+    .features-grid {
+      max-width: 1120px; margin: 0 auto;
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    .feature-card {
+      background: var(--bg-card); border-radius: var(--radius);
+      padding: 28px 24px; border: 1px solid var(--border-light);
+      transition: all 0.3s ease;
+      position: relative;
+    }
+    .feature-card:hover {
+      box-shadow: var(--shadow);
+      border-color: var(--border);
+      transform: translateY(-3px);
+    }
+    .feature-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 16px;
+    }
+    .feature-card h3 {
+      font-size: 15px; font-weight: 650; margin-bottom: 8px;
+      letter-spacing: -0.01em;
+    }
+    .feature-card p {
+      font-size: 13.5px; color: var(--text-secondary); line-height: 1.65;
+    }
+
+    .fi-blue { background: rgba(22,93,255,0.07); color: var(--primary); }
+    .fi-purple { background: rgba(114,46,209,0.07); color: var(--purple); }
+    .fi-green { background: rgba(0,180,42,0.07); color: var(--green); }
+    .fi-orange { background: rgba(255,125,0,0.07); color: var(--orange); }
+    .fi-red { background: rgba(245,63,63,0.07); color: var(--red); }
+    .fi-cyan { background: rgba(20,201,201,0.07); color: var(--cyan); }
+
+    /* ===== TECH ===== */
+    .tech {
+      padding: 80px 24px;
+      background: var(--bg-secondary);
+    }
+    .tech-grid {
+      max-width: 700px; margin: 0 auto;
+      display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
+    }
+    .tech-tag {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 20px; border-radius: var(--radius-sm);
+      background: var(--bg); border: 1px solid var(--border-light);
+      font-size: 14px; font-weight: 500; color: var(--text);
+      transition: all 0.2s;
+      box-shadow: var(--shadow-sm);
+    }
+    .tech-tag:hover {
+      border-color: var(--primary-border);
+      box-shadow: var(--shadow);
+      transform: translateY(-1px);
+    }
+    .tech-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+    }
+
+    /* ===== CTA ===== */
+    .cta {
+      padding: 72px 24px;
+      text-align: center;
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border-light);
+    }
+    .cta h2 {
+      font-size: 24px; font-weight: 700; margin-bottom: 10px;
+      letter-spacing: -0.02em; color: var(--text);
+    }
+    .cta p {
+      font-size: 15px; color: var(--text-secondary); margin-bottom: 24px;
+    }
+    .cta .btn-primary {
+      background: var(--text); color: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    }
+    .cta .btn-primary:hover {
+      background: var(--text-secondary);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+      transform: translateY(-1px);
+    }
+
+    /* ===== FOOTER ===== */
+    .footer {
+      padding: 28px 24px;
+      text-align: center; font-size: 13px; color: var(--text-tertiary);
+      border-top: 1px solid var(--border-light);
+    }
+    .footer-links {
+      display: flex; align-items: center; justify-content: center;
+      gap: 6px; flex-wrap: wrap;
+    }
+    .footer a { color: var(--text-tertiary); }
+    .footer a:hover { color: var(--primary); }
+    .footer-sep { color: var(--border); }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 860px) {
+      .features-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 640px) {
+      .nav-right a.hide-mobile { display: none; }
+      .hero { padding: 120px 20px 48px; }
+      .hero h1 { font-size: 30px; }
+      .hero-desc { font-size: 15px; }
+      .platforms { gap: 16px; font-size: 12px; }
+      .features, .tech, .cta { padding: 60px 20px; }
+      .features-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav class="nav" id="nav">
+  <div class="nav-inner">
+    <div class="nav-brand">
+      <img class="nav-logo" src="ghhost.png" alt="Guohe Hosts" style="background:none;">
+      <span>Guohe Hosts</span>
+    </div>
+    <div class="nav-right">
+      <a href="#features" class="hide-mobile" data-i18n="nav.features"></a>
+      <a href="#tech" class="hide-mobile" data-i18n="nav.tech"></a>
+      <a href="https://github.com/ghboke/guohe-hosts" target="_blank" class="nav-github">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        GitHub
+      </a>
+      <button class="lang-btn" id="langSwitch" onclick="toggleLang()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        <span id="langLabel"></span>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-badge">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    <span data-i18n="hero.badge"></span>
+  </div>
+  <h1 data-i18n-html="hero.title"></h1>
+  <p class="hero-desc" data-i18n="hero.desc"></p>
+  <div class="hero-actions">
+    <a href="https://github.com/ghboke/guohe-hosts/releases" target="_blank" class="btn btn-primary">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <span data-i18n="hero.download"></span>
+    </a>
+    <a href="https://github.com/ghboke/guohe-hosts" target="_blank" class="btn btn-outline">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      <span data-i18n="hero.source"></span>
+    </a>
+  </div>
+  <div class="platforms">
+    <div class="platform-item">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+      Windows
+    </div>
+    <div class="platform-item">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701z"/></svg>
+      macOS
+    </div>
+    <div class="platform-item">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.832-.41 1.684-.287 2.489a.424.424 0 00-.11.135c-.26.268-.45.6-.663.839-.199.199-.485.267-.797.4-.313.136-.658.269-.864.68-.09.189-.136.394-.132.602 0 .199.027.4.055.536.058.399.116.728.04.97-.249.68-.28 1.145-.106 1.484.174.334.535.47.94.601.81.2 1.91.135 2.774.6.926.466 1.866.67 2.616.47.526-.116.97-.464 1.208-.946.587-.003 1.23-.269 2.26-.334.699-.058 1.574.267 2.577.2.025.134.063.198.114.333l.003.003c.391.778 1.113 1.132 1.884 1.071.771-.06 1.592-.536 2.257-1.306.631-.765 1.683-1.084 2.378-1.503.348-.199.629-.469.649-.853.023-.4-.2-.811-.714-1.376v-.097l-.003-.003c-.17-.2-.25-.535-.338-.926-.085-.401-.182-.786-.492-1.046h-.003c-.059-.054-.123-.067-.188-.135a.357.357 0 00-.19-.064c.431-1.278.264-2.55-.173-3.694-.533-1.41-1.465-2.638-2.175-3.483-.796-1.005-1.576-1.957-1.56-3.368.026-2.152.236-6.133-3.544-6.139zm.529 3.405h.013c.213 0 .396.062.584.198.19.135.33.332.438.533.105.259.158.459.166.724 0-.02.006-.04.006-.06v.105a.086.086 0 01-.004-.021l-.004-.024a1.807 1.807 0 01-.15.706.953.953 0 01-.213.335.71.71 0 00-.088-.042c-.104-.045-.198-.064-.284-.133a1.312 1.312 0 00-.22-.066c.05-.06.146-.133.183-.198.053-.128.082-.264.088-.402v-.02a1.21 1.21 0 00-.061-.4c-.045-.134-.101-.2-.183-.333-.084-.066-.167-.132-.267-.132h-.016c-.093 0-.176.03-.262.132a.8.8 0 00-.205.334 1.18 1.18 0 00-.09.4v.019c.002.089.008.179.02.267-.193-.067-.438-.135-.607-.202a1.635 1.635 0 01-.018-.2v-.02a1.772 1.772 0 01.15-.768c.082-.22.232-.406.43-.533a.985.985 0 01.594-.2zm-2.962.059h.036c.142 0 .27.048.399.135.146.129.264.288.344.465.09.199.14.4.153.667v.004c.007.134.006.2-.002.266v.08c-.03.007-.056.018-.083.024-.152.055-.274.135-.393.2.012-.09.013-.18.003-.267v-.015c-.012-.133-.04-.2-.082-.333a.613.613 0 00-.166-.267.248.248 0 00-.183-.064h-.021c-.071.006-.13.04-.186.132a.552.552 0 00-.12.27.944.944 0 00-.023.33v.015c.012.135.037.2.08.334.046.134.098.2.166.268.01.009.02.018.034.024-.07.057-.117.07-.176.136a.304.304 0 01-.131.068 2.62 2.62 0 01-.275-.402 1.772 1.772 0 01-.155-.667 1.759 1.759 0 01.08-.668 1.43 1.43 0 01.283-.535c.128-.133.26-.2.418-.2zm1.37 1.706c.332 0 .733.065 1.216.399.293.2.523.269 1.052.468h.003c.255.136.405.266.478.399v-.131a.571.571 0 01.016.47c-.123.31-.516.643-1.063.842v.002c-.268.135-.501.333-.775.465-.276.135-.588.292-1.012.267a1.139 1.139 0 01-.448-.067 3.566 3.566 0 01-.322-.198c-.195-.135-.363-.332-.612-.465v-.005h-.005c-.4-.246-.616-.512-.686-.71-.07-.268-.005-.47.193-.6.224-.135.38-.271.483-.336.104-.074.143-.102.176-.131h.002v-.003c.169-.202.436-.47.839-.601.139-.036.294-.065.466-.065zm2.8 2.142c.358 1.417 1.196 3.475 1.735 4.473.286.534.855 1.659 1.102 3.024.156-.005.33.018.513.064.646-1.671-.546-3.467-1.089-3.966-.22-.2-.232-.335-.123-.335.59.534 1.365 1.572 1.646 2.757.13.535.16 1.104.021 1.67.067.028.135.06.205.067 1.032.534 1.413.938 1.23 1.537v-.043c-.06-.003-.12 0-.18 0h-.016c.151-.467-.182-.825-1.065-1.224-.915-.4-1.646-.336-1.77.465-.008.043-.013.066-.018.135-.068.023-.139.053-.209.064-.43.268-.662.669-.793 1.187-.13.533-.17 1.156-.205 1.869v.003c-.02.334-.17.838-.319 1.35-1.5 1.072-3.58 1.538-5.348.334a2.645 2.645 0 00-.402-.533 1.45 1.45 0 00-.275-.333c.182 0 .338-.03.465-.067a.615.615 0 00.314-.334c.108-.267 0-.697-.345-1.163-.345-.467-.931-.995-1.788-1.521-.63-.4-.986-.87-1.15-1.396-.165-.534-.143-1.085-.015-1.645.245-1.07.873-2.11 1.274-2.763.107-.065.037.135-.408.974-.396.751-1.14 2.497-.122 3.854a8.123 8.123 0 01.647-2.876c.564-1.278 1.743-3.504 1.836-5.268.048.036.217.135.289.202.218.133.38.333.59.465.21.201.477.335.876.335.039.003.075.006.11.006.412 0 .73-.134.997-.268.29-.134.52-.334.74-.4h.005c.467-.135.835-.402 1.044-.7zm2.185 8.958c.037.6.343 1.245.882 1.377.588.134 1.434-.333 1.791-.765l.211-.01c.315-.007.577.01.847.268l.003.003c.208.199.305.53.391.876.085.4.154.78.409 1.066.486.527.645.906.636 1.14l.003-.007v.018l-.003-.012c-.015.262-.185.396-.498.595-.63.401-1.746.712-2.457 1.57-.618.737-1.37 1.14-2.036 1.191-.664.053-1.237-.2-1.574-.898l-.005-.003c-.21-.4-.12-1.025.056-1.69.176-.668.428-1.344.463-1.897.037-.714.076-1.335.195-1.814.12-.465.308-.797.641-.984l.045-.022zm-10.814.049h.01c.053 0 .105.005.157.014.376.055.706.333 1.023.752l.91 1.664.003.003c.243.533.754 1.064 1.189 1.637.434.598.77 1.131.729 1.57v.006c-.057.744-.48 1.148-1.125 1.294-.645.135-1.52.002-2.395-.464-.968-.536-2.118-.469-2.857-.602-.369-.066-.61-.2-.723-.4-.11-.2-.113-.602.123-1.23v-.004l.002-.003c.117-.334.03-.752-.027-1.118-.055-.401-.083-.71.043-.94.16-.334.396-.4.69-.533.294-.135.64-.202.915-.47h.002v-.002c.256-.268.445-.601.668-.838.19-.201.38-.336.663-.336zm7.159-9.074c-.435.201-.945.535-1.488.535-.542 0-.97-.267-1.28-.466-.154-.134-.28-.268-.373-.335-.164-.134-.144-.333-.074-.333.109.016.129.134.199.2.096.066.215.2.36.333.292.2.68.467 1.167.467.485 0 1.053-.267 1.398-.466.195-.135.445-.334.648-.467.156-.136.149-.267.279-.267.128.016.034.134-.147.332a8.097 8.097 0 01-.69.468zm-1.082-1.583V5.64c-.006-.02.013-.042.029-.05.074-.043.18-.027.26.004.063 0 .16.067.15.135-.006.049-.085.066-.135.066-.055 0-.092-.043-.141-.068-.052-.018-.146-.008-.163-.065zm-.551 0c-.02.058-.113.049-.166.066-.047.025-.086.068-.14.068-.05 0-.13-.02-.136-.068-.01-.066.088-.133.15-.133.08-.031.184-.047.259-.005.019.009.036.03.03.05v.02h.003z"/></svg>
+      Linux
+    </div>
+  </div>
+</section>
+
+<!-- Screenshot -->
+<section class="screenshot-section">
+  <div class="screenshot-wrapper fade-up">
+    <img id="screenshotImg" src="software-light.png" alt="Guohe Hosts Screenshot">
+  </div>
+  <div style="display:flex;justify-content:center;gap:8px;margin-top:16px;">
+    <button class="screenshot-toggle active" id="btnLight" onclick="switchScreenshot('light')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      Light
+    </button>
+    <button class="screenshot-toggle" id="btnDark" onclick="switchScreenshot('dark')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      Dark
+    </button>
+  </div>
+</section>
+
+<!-- Features -->
+<section class="features" id="features">
+  <div class="section-header fade-up">
+    <div class="section-label" data-i18n="features.label"></div>
+    <h2 data-i18n="features.title"></h2>
+    <p data-i18n="features.subtitle"></p>
+  </div>
+  <div class="features-grid">
+    <div class="feature-card fade-up">
+      <div class="feature-icon fi-blue">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      </div>
+      <h3 data-i18n="features.groups.title"></h3>
+      <p data-i18n="features.groups.desc"></p>
+    </div>
+    <div class="feature-card fade-up">
+      <div class="feature-icon fi-purple">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      </div>
+      <h3 data-i18n="features.editor.title"></h3>
+      <p data-i18n="features.editor.desc"></p>
+    </div>
+    <div class="feature-card fade-up">
+      <div class="feature-icon fi-green">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      </div>
+      <h3 data-i18n="features.tray.title"></h3>
+      <p data-i18n="features.tray.desc"></p>
+    </div>
+    <div class="feature-card fade-up">
+      <div class="feature-icon fi-orange">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </div>
+      <h3 data-i18n="features.theme.title"></h3>
+      <p data-i18n="features.theme.desc"></p>
+    </div>
+    <div class="feature-card fade-up">
+      <div class="feature-icon fi-red">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      </div>
+      <h3 data-i18n="features.backup.title"></h3>
+      <p data-i18n="features.backup.desc"></p>
+    </div>
+    <div class="feature-card fade-up">
+      <div class="feature-icon fi-cyan">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
+      </div>
+      <h3 data-i18n="features.drag.title"></h3>
+      <p data-i18n="features.drag.desc"></p>
+    </div>
+    <div class="feature-card fade-up">
+      <div class="feature-icon fi-green">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+      </div>
+      <h3 data-i18n="features.dns.title"></h3>
+      <p data-i18n="features.dns.desc"></p>
+    </div>
+    <div class="feature-card fade-up">
+      <div class="feature-icon fi-purple">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      </div>
+      <h3 data-i18n="features.i18n.title"></h3>
+      <p data-i18n="features.i18n.desc"></p>
+    </div>
+    <div class="feature-card fade-up">
+      <div class="feature-icon fi-orange">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+      </div>
+      <h3 data-i18n="features.portable.title"></h3>
+      <p data-i18n="features.portable.desc"></p>
+    </div>
+  </div>
+</section>
+
+<!-- Tech Stack -->
+<section class="tech" id="tech">
+  <div class="section-header fade-up">
+    <div class="section-label" data-i18n="tech.label"></div>
+    <h2 data-i18n="tech.title"></h2>
+    <p data-i18n="tech.subtitle"></p>
+  </div>
+  <div class="tech-grid fade-up">
+    <span class="tech-tag"><span class="tech-dot" style="background:#dea584"></span>Rust</span>
+    <span class="tech-tag"><span class="tech-dot" style="background:#165dff"></span>Tauri 2</span>
+    <span class="tech-tag"><span class="tech-dot" style="background:#42b883"></span>Vue 3</span>
+    <span class="tech-tag"><span class="tech-dot" style="background:#3178c6"></span>TypeScript</span>
+    <span class="tech-tag"><span class="tech-dot" style="background:#646cff"></span>Vite</span>
+    <span class="tech-tag"><span class="tech-dot" style="background:#165dff"></span>Arco Design</span>
+    <span class="tech-tag"><span class="tech-dot" style="background:#d4372c"></span>CodeMirror 6</span>
+    <span class="tech-tag"><span class="tech-dot" style="background:#ffd859"></span>Pinia</span>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta fade-up">
+  <h2 data-i18n="cta.title"></h2>
+  <p data-i18n="cta.desc"></p>
+  <a href="https://github.com/ghboke/guohe-hosts" target="_blank" class="btn btn-primary">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+    <span data-i18n="cta.button"></span>
+  </a>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="footer-links">
+    <span>MIT License</span>
+    <span class="footer-sep">&middot;</span>
+    <a href="https://github.com/ghboke/guohe-hosts" target="_blank">GitHub</a>
+    <span class="footer-sep">&middot;</span>
+    <span data-i18n="footer.madeWith"></span>
+  </div>
+</footer>
+
+<script>
+var i18n = {
+  'zh-CN': {
+    'nav.features': '功能特性',
+    'nav.tech': '技术栈',
+    'hero.badge': '开源免费 &middot; 跨平台',
+    'hero.title': '更优雅地管理你的<br><span class="highlight">Hosts 文件</span>',
+    'hero.desc': '果核Hosts 是一款现代化的 hosts 文件编辑器，支持分组管理、一键切换、DNS 刷新，让本地域名配置变得简单高效。',
+    'hero.download': '下载使用',
+    'hero.source': '查看源码',
+    'screenshot.light': 'Light',
+    'screenshot.dark': 'Dark',
+    'features.label': 'FEATURES',
+    'features.title': '功能特性',
+    'features.subtitle': '专为高效管理 hosts 文件而设计',
+    'features.groups.title': '分组管理',
+    'features.groups.desc': '将 hosts 记录按项目或场景分组，每个分组可独立启用/禁用，告别杂乱无章的 hosts 文件。',
+    'features.editor.title': '双视图编辑',
+    'features.editor.desc': '表格视图直观编辑 IP 和域名；文本视图使用 CodeMirror 编辑器，支持语法高亮，满足不同习惯。',
+    'features.tray.title': '系统托盘',
+    'features.tray.desc': '最小化到系统托盘常驻运行，右键菜单快速刷新 DNS，不占用任务栏空间。',
+    'features.theme.title': '明暗主题',
+    'features.theme.desc': '支持浅色、深色和跟随系统三种主题模式，保护你的眼睛。',
+    'features.backup.title': '备份恢复',
+    'features.backup.desc': '一键创建 hosts 文件备份，随时恢复到历史版本，修改无忧。',
+    'features.drag.title': '拖拽排序',
+    'features.drag.desc': '分组和记录均支持拖拽排序，自由调整顺序，操作直觉化。',
+    'features.dns.title': 'DNS 刷新',
+    'features.dns.desc': '保存后自动刷新 DNS 缓存，也可手动一键刷新，修改即时生效。',
+    'features.i18n.title': '多语言支持',
+    'features.i18n.desc': '内置中文和英文界面，自动检测系统语言，也可在设置中手动切换。',
+    'features.portable.title': '便携免安装',
+    'features.portable.desc': '配置文件存储在程序目录，无需安装，拷贝即用，数据随身携带。',
+    'tech.label': 'TECH STACK',
+    'tech.title': '技术栈',
+    'tech.subtitle': '基于现代技术构建，性能与体验兼顾',
+    'cta.title': '开始使用果核Hosts',
+    'cta.desc': '开源免费，欢迎 Star 和贡献代码',
+    'cta.button': '前往 GitHub',
+    'footer.madeWith': '使用 Tauri + Vue 构建',
+    'lang.label': 'EN',
+  },
+  'en-US': {
+    'nav.features': 'Features',
+    'nav.tech': 'Tech Stack',
+    'hero.badge': 'Open Source &middot; Cross-Platform',
+    'hero.title': 'A Better Way to Manage<br>Your <span class="highlight">Hosts File</span>',
+    'hero.desc': 'Guohe Hosts is a modern hosts file editor with group management, one-click toggling, and DNS flushing. Making local domain configuration simple and efficient.',
+    'hero.download': 'Download',
+    'hero.source': 'Source Code',
+    'screenshot.light': 'Light',
+    'screenshot.dark': 'Dark',
+    'features.label': 'FEATURES',
+    'features.title': 'Features',
+    'features.subtitle': 'Designed for efficient hosts file management',
+    'features.groups.title': 'Group Management',
+    'features.groups.desc': 'Organize hosts entries by project or environment. Enable or disable each group independently. No more messy hosts files.',
+    'features.editor.title': 'Dual View Editor',
+    'features.editor.desc': 'Table view for intuitive IP and hostname editing. Text view powered by CodeMirror with syntax highlighting for power users.',
+    'features.tray.title': 'System Tray',
+    'features.tray.desc': 'Minimize to system tray for always-on access. Right-click to flush DNS instantly without opening the window.',
+    'features.theme.title': 'Light & Dark Themes',
+    'features.theme.desc': 'Switch between light, dark, or system-following theme modes. Easy on the eyes, day and night.',
+    'features.backup.title': 'Backup & Restore',
+    'features.backup.desc': 'Create hosts file backups with one click. Restore any previous version instantly. Edit with confidence.',
+    'features.drag.title': 'Drag & Drop Sorting',
+    'features.drag.desc': 'Reorder groups and entries by dragging. Intuitive and natural interaction for organizing your hosts.',
+    'features.dns.title': 'DNS Flush',
+    'features.dns.desc': 'Automatically flush DNS cache after saving. Or flush manually with one click. Changes take effect immediately.',
+    'features.i18n.title': 'Multi-language',
+    'features.i18n.desc': 'Built-in Chinese and English interfaces. Auto-detects system language with manual override in settings.',
+    'features.portable.title': 'Portable',
+    'features.portable.desc': 'All configuration stored alongside the executable. No installation needed. Copy and run anywhere.',
+    'tech.label': 'TECH STACK',
+    'tech.title': 'Tech Stack',
+    'tech.subtitle': 'Built with modern technologies for performance and great UX',
+    'cta.title': 'Get Started with Guohe Hosts',
+    'cta.desc': 'Open source and free. Stars and contributions welcome.',
+    'cta.button': 'View on GitHub',
+    'footer.madeWith': 'Built with Tauri + Vue',
+    'lang.label': '中文',
+  }
+};
+
+var currentLang = 'zh-CN';
+
+function detectLang() {
+  var saved = localStorage.getItem('guohe-lang');
+  if (saved && i18n[saved]) return saved;
+  var nav = navigator.language || navigator.userLanguage || '';
+  return nav.startsWith('zh') ? 'zh-CN' : 'en-US';
+}
+
+function applyLang(lang) {
+  currentLang = lang;
+  localStorage.setItem('guohe-lang', lang);
+  document.documentElement.lang = lang === 'zh-CN' ? 'zh-CN' : 'en';
+  var strings = i18n[lang];
+
+  document.querySelectorAll('[data-i18n]').forEach(function(el) {
+    var key = el.getAttribute('data-i18n');
+    if (strings[key] != null) el.textContent = strings[key];
+  });
+  document.querySelectorAll('[data-i18n-html]').forEach(function(el) {
+    var key = el.getAttribute('data-i18n-html');
+    if (strings[key] != null) el.innerHTML = strings[key];
+  });
+
+  // Elements with HTML entities
+  ['hero.badge'].forEach(function(key) {
+    var el = document.querySelector('[data-i18n="' + key + '"]');
+    if (el && strings[key]) el.innerHTML = strings[key];
+  });
+
+  document.getElementById('langLabel').textContent = strings['lang.label'];
+}
+
+function toggleLang() {
+  applyLang(currentLang === 'zh-CN' ? 'en-US' : 'zh-CN');
+}
+
+// Nav scroll effect
+window.addEventListener('scroll', function() {
+  document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 10);
+});
+
+// Scroll reveal animation
+var observer = new IntersectionObserver(function(entries) {
+  entries.forEach(function(entry) {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+document.querySelectorAll('.fade-up').forEach(function(el) {
+  observer.observe(el);
+});
+
+// Init
+applyLang(detectLang());
+
+// Screenshot toggle
+function switchScreenshot(mode) {
+  document.getElementById('screenshotImg').src = 'software-' + mode + '.png';
+  document.getElementById('btnLight').classList.toggle('active', mode === 'light');
+  document.getElementById('btnDark').classList.toggle('active', mode === 'dark');
+}
+</script>
+
+</body>
+</html>
